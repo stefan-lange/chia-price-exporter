@@ -7,8 +7,10 @@ a [Prometheus](https://github.com/prometheus/prometheus) compatible `/metrics` e
 
 ## Usage
 
-`chia-exporter serve` will start the metrics exporter on the default port of `9915`. Metrics will be available
+`chia-price-exporter serve` will start the metrics exporter on the default port of `9915`. Metrics will be available
 at `<hostname>:9915/metrics`.
+
+To see further supported commands and flags try `chia-price-exporter --help`.
 
 ## Metrics
 
