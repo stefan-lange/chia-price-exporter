@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.0.3] - 2022-06-25
+
+### Changed
+
+- changed exporter port to `9952` as default port allocation,
+  see https://github.com/prometheus/prometheus/wiki/Default-port-allocations
+
 ## [0.0.2] - 2022-06-21
 
 ### Added
