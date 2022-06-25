@@ -7,8 +7,8 @@ a [Prometheus](https://github.com/prometheus/prometheus) compatible `/metrics` e
 
 ## Usage
 
-`chia-price-exporter serve` will start the metrics exporter on the default port of `9915`. Metrics will be available
-at `<hostname>:9915/metrics`.
+`chia-price-exporter serve` will start the metrics exporter on the default port of `9952`. Metrics will be available
+at `<hostname>:9952/metrics`.
 
 To see further supported commands and flags try `chia-price-exporter --help`.
 
@@ -33,7 +33,7 @@ scrape_configs:
     -   job_name: 'chia-price-exporter'
         scrape_interval: 60s
         static_configs:
-            -   targets: [ '<<CHIA-PRICE-EXPORTER-HOSTNAME>>:9915' ]
+            -   targets: [ '<<CHIA-PRICE-EXPORTER-HOSTNAME>>:9952' ]
 ```
 
 ## Development (quick start)
@@ -45,16 +45,16 @@ scrape_configs:
 make build
 ./bin/chia-price-exporter serve
 # test manually
-curl -v localhost:9915/metrics
+curl -v localhost:9952/metrics
 ```
 
 ### using docker
 
 ```shell
 # build and run
-docker run --rm -p "9915:9915" -it $(docker build -q .) serve
+docker run --rm -p "9952:9952" -it $(docker build -q .) serve
 # test manually
-curl -v localhost:9915/metrics
+curl -v localhost:9952/metrics
 ```
 
 play with executable

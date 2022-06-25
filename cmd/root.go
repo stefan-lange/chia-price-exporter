@@ -29,7 +29,7 @@ func init() {
 		logLevel    string
 	)
 
-	rootCmd.PersistentFlags().IntVar(&metricsPort, FlagMetricsPort, 9915, "The port the metrics server binds to")
+	rootCmd.PersistentFlags().IntVar(&metricsPort, FlagMetricsPort, 9952, "The port the metrics server binds to")
 	rootCmd.PersistentFlags().StringVar(&logLevel, FlagLogLevel, "info", "How verbose the logs should be. panic, fatal, error, warn, info, debug, trace")
 
 	err := viper.BindPFlag(FlagMetricsPort, rootCmd.PersistentFlags().Lookup(FlagMetricsPort))
