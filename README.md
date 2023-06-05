@@ -15,7 +15,8 @@ To see further supported commands and flags try `chia-price-exporter --help`.
 ## Metrics
 
 The following metrics are supported and fully compatible with the
-great [Chia Monitor](https://github.com/philippnormann/chia-monitor) and the [Chia Farm Dashboard](https://github.com/stefan-lange/chia-farm-dashboard).
+great [Chia Monitor](https://github.com/philippnormann/chia-monitor) and
+the [Chia Farm Dashboard](https://github.com/stefan-lange/chia-farm-dashboard).
 
 | Metric                   | Description |
 |--------------------------|-------------|
@@ -63,3 +64,10 @@ play with executable
 docker run --rm -it $(docker build -q .)
 ```
 
+## Maintenance
+
+update go dependencies to latest and greatest
+
+```shell
+go get -u ./...
+```

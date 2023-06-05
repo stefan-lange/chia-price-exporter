@@ -7,11 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.0.4] - 2023-06-05
+## [0.0.4] - 2023-06-06
 
 ### Added
 
 - Docker container build published to docker hub
+
+### Updated
+
+- go dependencies to latest and greatest
 
 ## [0.0.3] - 2022-06-25
 
