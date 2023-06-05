@@ -10,6 +10,14 @@
         paths:
             - .go/pkg/mod/
 
+.rule-build-docker: &rule-build-docker
+    # don't run on tags
+    if: '$CI_COMMIT_TAG == null'
+
+.rule-build-go: &rule-build-go
+    # don't run on tags
+    if: '$CI_COMMIT_TAG == null'
+
 default:
     image: golang:1.18
 
@@ -22,6 +30,8 @@ stages:
 cache_deps:
     extends: .go-cache
     stage: prepare
+    rules:
+        - *rule-build-go
     script:
         - make dep
     cache:
@@ -31,46 +41,93 @@ cache_deps:
 unit_tests:
     extends: .go-cache
     stage: test
+    rules:
+        - *rule-build-go
     script:
         - make test
 
 race_detector:
     extends: .go-cache
     stage: test
+    rules:
+        - *rule-build-go
     script:
         - make race
 
 .memory_sanitizer:
     extends: .go-cache
     stage: test
+    rules:
+        - *rule-build-go
     script:
         - make msan
 
 .code_coverage:
     extends: .go-cache
     stage: test
+    rules:
+        - *rule-build-go
     script:
         - make coverage
 
 .code_coverage_report:
     extends: .go-cache
     stage: test
+    rules:
+        - *rule-build-go
+        - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
     script:
         - make coverhtml
-    only:
-        - main
 
 lint_code:
     extends: .go-cache
     stage: test
+    rules:
+        - *rule-build-go
     script:
         - make lint
 
 build:
     extends: .go-cache
     stage: build
+    rules:
+        - *rule-build-go
     script:
         - make
+
+# see build-docker-release.sh for available variables and their defaults
+.template_build_and_push_image:
+    image: docker:23
+    services:
+        - name: docker:23-dind
+    variables:
+        # see https://docs.gitlab.com/ee/ci/docker/using_docker_build.html#tls-enabled for Dind configuration
+        #DOCKER_HOST: tcp://docker:2375 #--> this should only be configured when using Kubernetes runners
+        # When using dind, it's wise to use the overlayfs driver for
+        # improved performance.
+        DOCKER_DRIVER: overlay2
+        # try not to use matrix build with platform, because it seems not to work with docker hub and push
+        PLATFORM: linux/arm64,linux/amd64
+        DOCKER_REGISTRY: $CI_REGISTRY
+        DOCKER_REGISTRY_IMAGE_PATH: "$CI_PROJECT_NAMESPACE/$CI_PROJECT_NAME"
+        DOCKER_REGISTRY_LOGIN_TOKEN: $CI_JOB_TOKEN
+        DOCKER_REGISTRY_LOGIN_USER: 'gitlab-ci-token'
+        CHIA_PRICE_EXPORTER_VERSION: "dev-$CI_PIPELINE_IID"
+    before_script:
+        # prepare docker hub data and login to registry
+        - echo -n $DOCKER_REGISTRY_LOGIN_TOKEN | docker login -u $DOCKER_REGISTRY_LOGIN_USER --password-stdin $DOCKER_REGISTRY
+    script:
+        - /bin/sh ./.ci/build-docker-release.sh
+    retry: 2
+
+build-docker:
+    stage: build
+    extends: .template_build_and_push_image
+    rules:
+        - *rule-build-docker
+
+
+# release below ------------------------
 
 extract-version-changes:
     stage: prepare
@@ -100,3 +157,25 @@ release:
         tag_name: '$CI_COMMIT_TAG'  # use the git tag as gitlab release name
         description: './CHANGELOG-CHANGES.md'
         ref: '$CI_COMMIT_SHA'                          # The tag is created from the pipeline SHA.
+
+tag-release:
+    stage: release
+    extends: .template_build_and_push_image
+    rules:
+        - if: $CI_COMMIT_TAG
+          when: on_success
+    variables:
+        CHIA_PRICE_EXPORTER_VERSION: $CI_COMMIT_TAG
+
+publish-docker-hub:
+    stage: release
+    extends: .template_build_and_push_image
+    rules:
+        - if: $CI_COMMIT_TAG
+          when: on_success
+    variables:
+        DOCKER_REGISTRY: 'docker.io'
+        DOCKER_REGISTRY_IMAGE_PATH: 'cryptastic/chia-price-exporter'
+        DOCKER_REGISTRY_LOGIN_TOKEN: $DOCKER_HUB_TOKEN
+        DOCKER_REGISTRY_LOGIN_USER: $DOCKER_HUB_USER
+        CHIA_PRICE_EXPORTER_VERSION: $CI_COMMIT_TAG

@@ -6,7 +6,7 @@ WORKDIR /build
 
 FROM builder-golang-base as builder
 # cache dependencies (for faster builds)
-COPY go.* .
+COPY go.* ./
 RUN go mod download
 # build
 COPY . .
