@@ -12,6 +12,6 @@ RUN go mod download
 COPY . .
 RUN make build
 
-FROM alpine:3
+FROM scratch
 COPY --from=builder /build/bin/chia-price-exporter /usr/local/bin/chia-price-exporter
 ENTRYPOINT ["/usr/local/bin/chia-price-exporter"]
