@@ -12,6 +12,10 @@ RUN go mod download
 COPY . .
 RUN make build
 
-FROM scratch
+FROM alpine:3 as builder-ssl-certs
+RUN apk add --no-cache ca-certificates
+
+FROM scratch as prod
+COPY --from=builder-ssl-certs /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
 COPY --from=builder /build/bin/chia-price-exporter /usr/local/bin/chia-price-exporter
 ENTRYPOINT ["/usr/local/bin/chia-price-exporter"]
