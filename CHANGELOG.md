@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- changed base image from alpine to scratch
+
 ## [0.0.4] - 2023-06-06
 
 ### Added
