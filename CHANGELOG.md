@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Updated
+
+- go dependencies to latest and greatest
+
 ### Changed
 
 - changed base image from alpine to scratch
@@ -19,6 +23,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Updated
 
+- go from 1.18 to 1.20
 - go dependencies to latest and greatest
 
 ## [0.0.3] - 2022-06-25
