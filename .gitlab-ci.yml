@@ -21,10 +21,14 @@
 default:
     image: golang:1.20
 
+variables:
+    APP_VERSION_INTERNAL: "dev-$CI_PIPELINE_IID"
+
 stages:
     - prepare
     - test
     - build
+    - integration
     - release
 
 cache_deps:
@@ -112,7 +116,7 @@ build:
         DOCKER_REGISTRY_IMAGE_PATH: "$CI_PROJECT_NAMESPACE/$CI_PROJECT_NAME"
         DOCKER_REGISTRY_LOGIN_TOKEN: $CI_JOB_TOKEN
         DOCKER_REGISTRY_LOGIN_USER: 'gitlab-ci-token'
-        CHIA_PRICE_EXPORTER_VERSION: "dev-$CI_PIPELINE_IID"
+        CHIA_PRICE_EXPORTER_VERSION: $APP_VERSION_INTERNAL
     before_script:
         # prepare docker hub data and login to registry
         - echo -n $DOCKER_REGISTRY_LOGIN_TOKEN | docker login -u $DOCKER_REGISTRY_LOGIN_USER --password-stdin $DOCKER_REGISTRY
@@ -126,6 +130,65 @@ build-docker:
     rules:
         - *rule-build-docker
 
+# integration below --------------------
+
+test-image:
+    stage: integration
+    needs:
+        - build-docker
+    image: docker:23-dind
+    variables:
+        GIT_STRATEGY: none
+        DOCKER_REGISTRY: $CI_REGISTRY
+        DOCKER_REGISTRY_IMAGE_PATH: "$CI_PROJECT_NAMESPACE/$CI_PROJECT_NAME"
+        DOCKER_REGISTRY_LOGIN_TOKEN: $CI_JOB_TOKEN
+        DOCKER_REGISTRY_LOGIN_USER: 'gitlab-ci-token'
+        TEST_CONTAINER_NAME: "$CI_PROJECT_NAME-$CI_JOB_ID"
+    before_script:
+        - |
+            # install platform simulator
+            # see https://enlear.academy/run-amd64-docker-images-on-an-arm-computer-208929004510
+            docker run --privileged --rm tonistiigi/binfmt --install "$PLATFORM"
+            # prepare docker hub data and login to registry
+            echo -n $DOCKER_REGISTRY_LOGIN_TOKEN | docker login -u $DOCKER_REGISTRY_LOGIN_USER --password-stdin $DOCKER_REGISTRY
+    script:
+        - |
+            DOCKER_IMAGE_TAG=$APP_VERSION_INTERNAL
+            DOCKER_IMAGE=$CI_REGISTRY/$CI_PROJECT_NAMESPACE/$CI_PROJECT_NAME:$DOCKER_IMAGE_TAG
+            echo "testing docker image: $DOCKER_IMAGE"
+            # run test
+        - docker pull --platform "$PLATFORM" "$DOCKER_IMAGE"
+        - |
+            docker run --name "$TEST_CONTAINER_NAME" --rm --platform "$PLATFORM" "$DOCKER_IMAGE" serve &
+            sleep 3
+        - |
+            # call metrics endpoint
+            docker run --link "$TEST_CONTAINER_NAME:testme" --rm curlimages/curl -v --show-error --connect-timeout 5 --max-time 10 --retry 5 --retry-delay 1 "http://testme:9952/metrics" >./response.txt
+        - cat ./response.txt
+        - |
+            # check if "chia_price_eur_cent 1234" is in response
+            RESPONSE_PATTERN="^chia_price_eur_cent[[:blank:]][[:digit:]]+$"
+            if grep -q -E $RESPONSE_PATTERN ./response.txt; then
+                parsedResult=$(grep -E $RESPONSE_PATTERN ./response.txt)
+            else
+                echo "Could not find 'chia_price_eur_cent' in response"
+                docker logs "$TEST_CONTAINER_NAME"
+                exit 1
+            fi
+            
+            # check if the price has a valid value (> 0)
+            actualPriceEurCent=$(echo $parsedResult | cut -d" " -f2)
+            echo "actual chia price [eur cent] is '$actualPriceEurCent'"
+            ([ ! -z "$actualPriceEurCent" ] && [ "$actualPriceEurCent" -gt 0 ] && echo "Test successful!") || (echo "Test failed: expected chia price [eur cent] '$actualPriceEurCent' is not > 0" && exit 1)
+    after_script:
+        - docker stop --time 1 $TEST_CONTAINER_NAME
+    parallel:
+        matrix:
+            -   PLATFORM:
+                    - linux/amd64
+                    - linux/arm64
+    rules:
+        - *rule-build-docker
 
 # release below ------------------------
 

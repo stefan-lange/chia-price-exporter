@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.1] - 2023-07-18
+
+### Added
+
+- integration test to test the docker image
+
+### Fixed
+
+- connection error `tls: failed to verify certificate: x509: certificate signed by unknown authority`
+
 ## [0.1.0] - 2023-07-18
 
 ### Updated
