@@ -1,3 +1,9 @@
+include:
+    - project: 'buildsrv/ci'
+      file:
+          - '/templates/build/docker-dind-multiarch/v1.gitlab-ci.yml'
+          - '/templates/build/registry-image-copy/v1.gitlab-ci.yml'
+
 .go-cache:
     variables:
         GOPATH: $CI_PROJECT_DIR/.go
@@ -99,29 +105,11 @@ build:
     script:
         - make
 
-# see build-docker-release.sh for available variables and their defaults
 .template_build_and_push_image:
-    image: docker:23
-    services:
-        - name: docker:23-dind
+    # per includes
+    extends: .build:docker-dind-multiarch
     variables:
-        # see https://docs.gitlab.com/ee/ci/docker/using_docker_build.html#tls-enabled for Dind configuration
-        #DOCKER_HOST: tcp://docker:2375 #--> this should only be configured when using Kubernetes runners
-        # When using dind, it's wise to use the overlayfs driver for
-        # improved performance.
-        DOCKER_DRIVER: overlay2
-        # try not to use matrix build with platform, because it seems not to work with docker hub and push
-        PLATFORM: linux/arm64,linux/amd64
-        DOCKER_REGISTRY: $CI_REGISTRY
-        DOCKER_REGISTRY_IMAGE_PATH: "$CI_PROJECT_NAMESPACE/$CI_PROJECT_NAME"
-        DOCKER_REGISTRY_LOGIN_TOKEN: $CI_JOB_TOKEN
-        DOCKER_REGISTRY_LOGIN_USER: 'gitlab-ci-token'
-        CHIA_PRICE_EXPORTER_VERSION: $APP_VERSION_INTERNAL
-    before_script:
-        # prepare docker hub data and login to registry
-        - echo -n $DOCKER_REGISTRY_LOGIN_TOKEN | docker login -u $DOCKER_REGISTRY_LOGIN_USER --password-stdin $DOCKER_REGISTRY
-    script:
-        - /bin/sh ./.ci/build-docker-release.sh
+        APP_VERSION: $APP_VERSION_INTERNAL
     retry: 2
 
 build-docker:
@@ -228,17 +216,20 @@ tag-release:
         - if: $CI_COMMIT_TAG
           when: on_success
     variables:
-        CHIA_PRICE_EXPORTER_VERSION: $CI_COMMIT_TAG
+        APP_VERSION: $CI_COMMIT_TAG
 
 publish-docker-hub:
+    # per includes
     stage: release
-    extends: .template_build_and_push_image
+    extends: .build:registry-image-copy
     rules:
-        - if: $CI_COMMIT_TAG
-          when: on_success
+        -   if: $CI_COMMIT_TAG
+            when: on_success
+    needs:
+        - tag-release
     variables:
-        DOCKER_REGISTRY: 'docker.io'
-        DOCKER_REGISTRY_IMAGE_PATH: 'cryptastic/chia-price-exporter'
-        DOCKER_REGISTRY_LOGIN_TOKEN: $DOCKER_HUB_TOKEN
-        DOCKER_REGISTRY_LOGIN_USER: $DOCKER_HUB_USER
-        CHIA_PRICE_EXPORTER_VERSION: $CI_COMMIT_TAG
+        OUT_DOCKER_REGISTRY: 'docker.io'
+        OUT_DOCKER_REGISTRY_IMAGE_PATH: 'cryptastic/chia-price-exporter'
+        OUT_DOCKER_REGISTRY_LOGIN_TOKEN: $DOCKER_HUB_TOKEN
+        OUT_DOCKER_REGISTRY_LOGIN_USER: $DOCKER_HUB_USER
+        DOCKER_IMAGE_TAG: $CI_COMMIT_TAG
