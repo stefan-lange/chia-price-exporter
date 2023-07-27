@@ -1,6 +1,4 @@
-# Chia Price Exporter
-
-[![Go Report Card](https://goreportcard.com/badge/github.com/stefan-lange/chia-price-exporter)](https://goreportcard.com/report/github.com/stefan-lange/chia-price-exporter)
+# Chia Price Exporter [![Docker Hub](https://img.shields.io/docker/v/cryptastic/chia-price-exporter?label=Docker%20Hub)](https://hub.docker.com/r/cryptastic/chia-price-exporter/tags) [![Go Report Card](https://goreportcard.com/badge/github.com/stefan-lange/chia-price-exporter)](https://goreportcard.com/report/github.com/stefan-lange/chia-price-exporter)
 
 Chia Price Exporter is a standalone application which exports metrics to
 a [Prometheus](https://github.com/prometheus/prometheus) compatible `/metrics` endpoint.
