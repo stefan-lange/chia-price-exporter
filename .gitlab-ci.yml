@@ -122,6 +122,7 @@ build-docker:
     extends: .template_build_and_push_image
     rules:
         - *rule-build-docker
+        - *rule-run-on-tags
 
 # integration below --------------------
 
@@ -193,12 +194,16 @@ gitlab-release:
         - *rule-run-on-tags
 
 tag-release:
+    # per includes
+    extends: .build:registry-image-copy
     stage: release
-    extends: .template_build_and_push_image
     rules:
         - *rule-run-on-tags
+    needs:
+        - job: build-docker
     variables:
-        APP_VERSION: $CI_COMMIT_TAG
+        IN_DOCKER_IMAGE_TAG: "$APP_VERSION_INTERNAL"
+        OUT_DOCKER_IMAGE_TAG: "$CI_COMMIT_TAG"
 
 publish-docker-hub:
     # per includes
