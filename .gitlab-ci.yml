@@ -2,6 +2,7 @@ include:
     - project: 'buildsrv/ci'
       file:
           - '/templates/build/docker-dind-multiarch/v1.gitlab-ci.yml'
+          - '/templates/build/gitlab-release/v1.gitlab-ci.yml'
           - '/templates/build/registry-image-copy/v1.gitlab-ci.yml'
 
 .go-cache:
@@ -23,6 +24,10 @@ include:
 .rule-build-go: &rule-build-go
     # don't run on tags
     if: '$CI_COMMIT_TAG == null'
+
+.rule-run-on-tags: &rule-run-on-tags
+    if: $CI_COMMIT_TAG
+    when: on_success
 
 default:
     image: golang:1.20
@@ -105,18 +110,16 @@ build:
     script:
         - make
 
-.template_build_and_push_image:
+build-docker:
     # per includes
     extends: .build:docker-dind-multiarch
+    stage: build
+    rules:
+        - *rule-build-docker
+        - *rule-run-on-tags
     variables:
         APP_VERSION: $APP_VERSION_INTERNAL
     retry: 2
-
-build-docker:
-    stage: build
-    extends: .template_build_and_push_image
-    rules:
-        - *rule-build-docker
 
 # integration below --------------------
 
@@ -180,51 +183,31 @@ test-image:
 
 # release below ------------------------
 
-extract-version-changes:
-    stage: prepare
-    rules:
-        -   if: $CI_COMMIT_TAG
-            when: on_success
-    script:
-        - /bin/bash ./.ci/extractVersionChanges.sh "$CI_COMMIT_TAG" ./CHANGELOG.md ./CHANGELOG-CHANGES.md
-    artifacts:
-        paths:
-            - CHANGELOG-CHANGES.md
-
-release:
-    # the release job creates a gitlab release
+gitlab-release:
+    # per includes
+    extends: .build:gitlab-release
     stage: release
-    image: registry.gitlab.com/gitlab-org/release-cli:v0.15.0
-    dependencies:
-        - extract-version-changes
-    # We recommend the use of `rules` to prevent these pipelines
-    # from running. See the notes section below for details.
     rules:
-        -   if: $CI_COMMIT_TAG
-            when: on_success
-    script:
-        - echo "running release job for $TAG"
-    release: # See https://docs.gitlab.com/ee/ci/yaml/#release for available properties
-        tag_name: '$CI_COMMIT_TAG'  # use the git tag as gitlab release name
-        description: './CHANGELOG-CHANGES.md'
-        ref: '$CI_COMMIT_SHA'                          # The tag is created from the pipeline SHA.
+        - *rule-run-on-tags
 
 tag-release:
+    # per includes
+    extends: .build:registry-image-copy
     stage: release
-    extends: .template_build_and_push_image
     rules:
-        - if: $CI_COMMIT_TAG
-          when: on_success
+        - *rule-run-on-tags
+    needs:
+        - job: build-docker
     variables:
-        APP_VERSION: $CI_COMMIT_TAG
+        IN_DOCKER_IMAGE_TAG: "$APP_VERSION_INTERNAL"
+        OUT_DOCKER_IMAGE_TAG: "$CI_COMMIT_TAG"
 
 publish-docker-hub:
     # per includes
     stage: release
     extends: .build:registry-image-copy
     rules:
-        -   if: $CI_COMMIT_TAG
-            when: on_success
+        - *rule-run-on-tags
     needs:
         - tag-release
     variables:
