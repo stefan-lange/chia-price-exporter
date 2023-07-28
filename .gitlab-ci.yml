@@ -4,6 +4,7 @@ include:
           - '/templates/build/docker-dind-multiarch/v1.gitlab-ci.yml'
           - '/templates/build/gitlab-release/v1.gitlab-ci.yml'
           - '/templates/build/registry-image-copy/v1.gitlab-ci.yml'
+          - '/templates/test/multiarch-image/v1.gitlab-ci.yml'
 
 .go-cache:
     variables:
@@ -124,33 +125,18 @@ build-docker:
 # integration below --------------------
 
 test-image:
+    # per includes
+    extends: .test:multiarch-image
     stage: integration
+    rules:
+        - *rule-build-docker
     needs:
         - build-docker
-    image: docker:23-dind
     variables:
-        GIT_STRATEGY: none
-        DOCKER_REGISTRY: $CI_REGISTRY
-        DOCKER_REGISTRY_IMAGE_PATH: "$CI_PROJECT_NAMESPACE/$CI_PROJECT_NAME"
-        DOCKER_REGISTRY_LOGIN_TOKEN: $CI_JOB_TOKEN
-        DOCKER_REGISTRY_LOGIN_USER: 'gitlab-ci-token'
-        TEST_CONTAINER_NAME: "$CI_PROJECT_NAME-$CI_JOB_ID"
-    before_script:
-        - |
-            # install platform simulator
-            # see https://enlear.academy/run-amd64-docker-images-on-an-arm-computer-208929004510
-            docker run --privileged --rm tonistiigi/binfmt --install "$PLATFORM"
-            # prepare docker hub data and login to registry
-            echo -n $DOCKER_REGISTRY_LOGIN_TOKEN | docker login -u $DOCKER_REGISTRY_LOGIN_USER --password-stdin $DOCKER_REGISTRY
+        TEST_IMAGE_TAG: $APP_VERSION_INTERNAL
     script:
         - |
-            DOCKER_IMAGE_TAG=$APP_VERSION_INTERNAL
-            DOCKER_IMAGE=$CI_REGISTRY/$CI_PROJECT_NAMESPACE/$CI_PROJECT_NAME:$DOCKER_IMAGE_TAG
-            echo "testing docker image: $DOCKER_IMAGE"
-            # run test
-        - docker pull --platform "$PLATFORM" "$DOCKER_IMAGE"
-        - |
-            docker run --name "$TEST_CONTAINER_NAME" --rm --platform "$PLATFORM" "$DOCKER_IMAGE" serve &
+            docker run --name "$TEST_CONTAINER_NAME" --rm --platform "$PLATFORM" "$TEST_IMAGE" serve &
             sleep 3
         - |
             # call metrics endpoint
@@ -171,15 +157,11 @@ test-image:
             actualPriceEurCent=$(echo $parsedResult | cut -d" " -f2)
             echo "actual chia price [eur cent] is '$actualPriceEurCent'"
             ([ ! -z "$actualPriceEurCent" ] && [ "$actualPriceEurCent" -gt 0 ] && echo "Test successful!") || (echo "Test failed: expected chia price [eur cent] '$actualPriceEurCent' is not > 0" && exit 1)
-    after_script:
-        - docker stop --time 1 $TEST_CONTAINER_NAME
     parallel:
         matrix:
             -   PLATFORM:
                     - linux/amd64
                     - linux/arm64
-    rules:
-        - *rule-build-docker
 
 # release below ------------------------
 
