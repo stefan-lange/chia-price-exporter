@@ -34,7 +34,7 @@ default:
     image: golang:1.20
 
 variables:
-    APP_VERSION_INTERNAL: "dev-$CI_PIPELINE_IID"
+    APP_VERSION_INTERNAL: "dev.$CI_PIPELINE_IID"
 
 stages:
     - prepare
