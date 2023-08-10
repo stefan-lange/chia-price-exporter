@@ -143,8 +143,8 @@ test-image:
             docker run --link "$TEST_CONTAINER_NAME:testme" --rm curlimages/curl -v --show-error --connect-timeout 5 --max-time 10 --retry 5 --retry-delay 1 "http://testme:9952/metrics" >./response.txt
         - cat ./response.txt
         - |
-            # check if "chia_price_eur_cent 1234" is in response
-            RESPONSE_PATTERN="^chia_price_eur_cent[[:blank:]][[:digit:]]+$"
+            # check if "chia_price_eur_cent 1234.0" is in response
+            RESPONSE_PATTERN="^chia_price_eur_cent[[:blank:]][[:digit:]]+\.?[[:digit:]]+$"
             if grep -q -E $RESPONSE_PATTERN ./response.txt; then
                 parsedResult=$(grep -E $RESPONSE_PATTERN ./response.txt)
             else
@@ -156,7 +156,7 @@ test-image:
             # check if the price has a valid value (> 0)
             actualPriceEurCent=$(echo $parsedResult | cut -d" " -f2)
             echo "actual chia price [eur cent] is '$actualPriceEurCent'"
-            ([ ! -z "$actualPriceEurCent" ] && [ "$actualPriceEurCent" -gt 0 ] && echo "Test successful!") || (echo "Test failed: expected chia price [eur cent] '$actualPriceEurCent' is not > 0" && exit 1)
+            ([ ! -z "$actualPriceEurCent" ] && [ "$(echo "$actualPriceEurCent > 0"|bc)" -eq 1 ] && echo "Test successful!") || (echo "Test failed: expected chia price [eur cent] '$actualPriceEurCent' is not > 0" && exit 1)
     parallel:
         matrix:
             -   PLATFORM:
