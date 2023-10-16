@@ -1,7 +1,7 @@
 include:
     - project: 'buildsrv/ci'
       file:
-          - '/templates/build/docker-dind-multiarch/v1.gitlab-ci.yml'
+          - '/templates/build/multiarch-image/v1.gitlab-ci.yml'
           - '/templates/build/gitlab-release/v1.gitlab-ci.yml'
           - '/templates/build/registry-image-copy/v1.gitlab-ci.yml'
           - '/templates/test/multiarch-image/v1.gitlab-ci.yml'
@@ -113,13 +113,13 @@ build:
 
 build-docker:
     # per includes
-    extends: .build:docker-dind-multiarch
+    extends: .build:multiarch-image
     stage: build
     rules:
         - *rule-build-docker
         - *rule-run-on-tags
     variables:
-        APP_VERSION: $APP_VERSION_INTERNAL
+        TAGS: "$APP_VERSION_INTERNAL"
     retry: 2
 
 # integration below --------------------
