@@ -182,7 +182,7 @@ tag-release:
         - job: build-docker
     variables:
         IN_DOCKER_IMAGE_TAG: "$APP_VERSION_INTERNAL"
-        OUT_DOCKER_IMAGE_TAG: "$CI_COMMIT_TAG"
+        OUT_DOCKER_IMAGE_TAGS: "$CI_COMMIT_TAG latest"
 
 publish-docker-hub:
     # per includes
