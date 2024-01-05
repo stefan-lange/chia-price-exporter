@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.3] - 2024-01-05
+
+### Updated
+
+- prometheus/client_golang to v1.18.0
+- spf13/cobra v1.8.0
+- spf13/viper to v1.18.2
+- indirect go dependencies to latest and greatest
+
 ## [0.1.2] - 2023-10-16
 
 ### Updated
