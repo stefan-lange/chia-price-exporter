@@ -1,52 +1,74 @@
-BINARY_NAME=chia-price-exporter
-PROJECT_NAME := $(shell env GO111MODULE=on go list -m)
-PKG := "$(PROJECT_NAME)"
-PKG_LIST := $(shell go list ${PKG}/... | grep -v /vendor/)
+MODULE   = $(shell env GO111MODULE=on $(GO) list -m)
+PKGS     = $(or $(PKG),$(shell env GO111MODULE=on $(GO) list ./...))
 GO_FILES := $(shell find . -name '*.go' | grep -v /vendor/ | grep -v _test.go)
+BIN      = $(CURDIR)/bin
 
-BIN = $(CURDIR)/bin
+GO      = go
+M = $(shell printf "\033[34;1m▶\033[0m")
+
+binext=""
+ifeq ($(GOOS),windows)
+  binext=".exe"
+endif
+
+export GO111MODULE=on
+
 $(BIN):
 	@mkdir -p $@
-$(BIN)/%: | $(BIN)
-	@tmp=$$(mktemp -d); \
-       env GO111MODULE=off GOPATH=$$tmp GOBIN=$(BIN) go get $(PACKAGE) \
-        || ret=$$?; \
-       rm -rf $$tmp ; exit $$ret
-$(BIN)/golint: PACKAGE=golang.org/x/lint/golint
+$(BIN)/%: | $(BIN) ; $(info $(M) installing package $(PACKAGE)...)
+	env GO111MODULE=on GOBIN=$(BIN) $(GO) install $(PACKAGE)
 
 GOLINT = $(BIN)/golint
+$(BIN)/golint: PACKAGE=golang.org/x/lint/golint@latest
 
-.PHONY: all dep build clean test coverage coverhtml lint
+.PHONY: all
+all:  clean dep lint vet build test coverage coverhtml
 
-all: build
+.PHONY: lint
+lint: | $(GOLINT) ; $(info $(M) running golint...) @ ## Run golint
+		$(GOLINT) -set_exit_status $(PKGS)
 
-lint: | $(GOLINT)
-		$(GOLINT) -set_exit_status ${PKG_LIST}
+.PHONY: vet
+vet: ; $(info $(M) running go vet...) @ ## Run go vet on all source files
+	$(GO) vet $(PKGS)
 
-test: ## Run unittests
-	go test -short ${PKG_LIST}
+.PHONY: test
+test: ; ## Run unittests
+	$(GO) test -short $(PKGS)
 
-race: dep ## Run data race detector
-	go test -race -short ${PKG_LIST}
+.PHONY: race
+race: dep ; ## Run data race detector
+	$(GO) test -race -short $(PKGS)
 
-msan: dep ## Run memory sanitizer
-	go test -msan -short ${PKG_LIST}
+.PHONY: msan
+msan: dep ; ## Run memory sanitizer
+	$(GO) test -msan -short $(PKGS)
 
-coverage: ## Generate global code coverage report
+.PHONY: coverage
+coverage: ; ## Generate global code coverage report
 	./tools/coverage.sh;
 
-coverhtml: ## Generate global code coverage report in HTML
+.PHONY: coverhtml
+coverhtml: ; ## Generate global code coverage report in HTML
 	./tools/coverage.sh html;
 
-dep: ## Get the dependencies
-	go mod download
+.PHONY: dep
+dep: ; $(info $(M) getting dependencies...) @ ## Get the dependencies
+	$(GO) mod download
 
-build: dep ## Build the binary file
-	CGO_ENABLED=0 go build -v -tags release -o $(BIN)/$(BINARY_NAME) main.go
+.PHONY: build
+build: $(BIN) dep ; $(info $(M) building executable...) @ ## Build program binary
+	CGO_ENABLED=0 $(GO) build \
+ 		-tags release \
+ 		-v \
+ 		-o $(BIN)/$(notdir $(basename $(MODULE)))$(binext) main.go
 
-clean: ## Clean build
-	go clean
-	rm -f $(BIN)/$(BINARY_NAME)
+.PHONY: clean
+clean: ; $(info $(M) cleaning...)	@ ## Cleanup everything
+	$(GO) clean
+	rm -rf $(BIN)
 
+.PHONY: help
 help: ## Display this help screen
-	grep -h -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}'
+	@grep -hE '^[ a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
+		awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-17s\033[0m %s\n", $$1, $$2}'
