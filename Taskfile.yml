@@ -1,0 +1,149 @@
+# yaml-language-server: $schema=https://taskfile.dev/schema.json
+version: '3'
+
+silent: true
+
+env:
+  CONTAINER_CLI: docker
+
+  BUILD_DIR: bin
+
+  GO111MODULE: on
+
+vars:
+  GO: go
+  GOLINT: $BUILD_DIR/golint
+  GO_MODULE:
+    sh: GO111MODULE=on {{.GO}} list -m
+  GO_PKGS:
+    sh: echo "$(GO111MODULE=on {{.GO}} list ./...)" | tr '\n' ' '
+  GO_EXECUTABLE_EXTENSION: '{{if eq .GOOS "windows"}}.exe{{else}}{{end}}'
+
+tasks:
+  default:
+    cmds: [ task -l ]
+
+  dep:
+    desc: Download go dependencies
+    cmds:
+      - task: log_info
+        vars: { msg: getting dependencies... }
+      - '{{.GO}} mod download'
+
+  vet:
+    desc: Vets code using `go vet`.
+    cmds:
+      - task: log_info
+        vars: { msg: running go vet... }
+      - '{{.GO}} vet {{.GO_PKGS}}'
+
+  fmt:
+    desc: Formats code using `go fmt`.
+    cmds:
+      - task: log_info
+        vars: { msg: running go fmt... }
+      - '{{.GO}} fmt {{.GO_PKGS}}'
+
+  race:
+    desc: Run go data race detector
+    deps:
+      - task: dep
+    cmds:
+      - task: log_info
+        vars: { msg: running go data race detector... }
+      - '{{.GO}} test -race -short {{.GO_PKGS}}'
+
+  msan:
+    desc: Run go memory sanitizer
+    deps:
+      - task: dep
+    cmds:
+      - task: log_info
+        vars: { msg: running go memory sanitizer... }
+      - '{{.GO}} test -msan -short {{.GO_PKGS}}'
+
+  lint:
+    desc: Run golint
+    deps:
+      - task: install_golint
+    cmds:
+      - task: log_info
+        vars: { msg: running golint... }
+      - '{{.GOLINT}} -set_exit_status {{.GO_PKGS}}'
+
+  install_golint:
+    desc: Installs golint
+    internal: true
+    deps:
+      - task: build_dir
+    cmds:
+      - task: log_info
+        vars: { msg: installing golint... }
+      - task: install_go_package
+        vars:
+          PACKAGE: golang.org/x/lint/golint@latest
+          GOBIN: $BUILD_DIR
+
+  install_go_package:
+    desc: Installs a go package
+    internal: true
+    env:
+      GO111MODULE: on
+    vars:
+      PACKAGE: '{{.PACKAGE | default ""}}'
+      GOBIN: '{{.GOBIN }}'
+      GOBIN_ABS: '{{.USER_WORKING_DIR}}/{{.GOBIN }}'
+    cmds:
+      - task: log_info
+        vars: { msg: 'installing package {{.PACKAGE}} to {{.GOBIN}}...' }
+      - 'GOBIN={{.GOBIN_ABS}} {{.GO}} install {{.PACKAGE}}'
+
+  build:
+    desc: Builds the executable
+    deps:
+      - task: dep
+    vars:
+      BINARY:
+        sh: 'echo {{.BUILD_DIR}}/$(basename {{.GO_MODULE}}){{.GO_EXECUTABLE_EXTENSION}}'
+    cmds:
+      - task: log_info
+        vars: { msg: 'building executable...' }
+      - 'CGO_ENABLED=0 {{.GO}} build -tags release -v -o {{.BINARY}} main.go'
+    generates:
+      - '{{.BINARY}}'
+
+  test:
+    desc: Runs tests with coverage
+    deps:
+      - task: build_dir
+      - task: fmt
+      - task: vet
+    vars:
+      COVERAGE_FILE: $BUILD_DIR/coverage.out
+    cmds:
+      - task: log_info
+        vars: { msg: running tests... }
+      - '{{.GO}} test {{.GO_PKGS}} -coverprofile {{.COVERAGE_FILE}}'
+    generates:
+      - '{{.COVERAGE_FILE}}'
+
+  clean:
+    desc: Cleanup everything.
+    cmds:
+      - task: log_info
+        vars: { msg: cleaning... }
+      - '{{.GO}} clean'
+      - rm -rf $BUILD_DIR
+
+  log_info:
+    internal: true
+    vars:
+      msg: '{{ .msg | default "info message" }}'
+    cmds:
+      - echo $(printf "\033[34;1m▶\033[0m") {{.msg}}
+
+  build_dir:
+    desc: Ensures that the build directory is present.
+    internal: true
+    cmds:
+      - mkdir -p $BUILD_DIR
