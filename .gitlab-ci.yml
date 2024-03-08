@@ -31,7 +31,7 @@ include:
   when: on_success
 
 default:
-  image: golang:1.22
+  image: registry.gitlab.com/buildsrv/images:build-base-golang-1.22
 
 variables:
   APP_VERSION_INTERNAL: "dev.$CI_PIPELINE_IID"
@@ -49,7 +49,7 @@ cache_deps:
   rules:
     - *rule-build-go
   script:
-    - make dep
+    - task dep
   cache:
     # make cache writeable for this job
     policy: pull-push
@@ -60,7 +60,7 @@ unit_tests:
   rules:
     - *rule-build-go
   script:
-    - make test
+    - task test
 
 race_detector:
   extends: .go-cache
@@ -68,7 +68,7 @@ race_detector:
   rules:
     - *rule-build-go
   script:
-    - make race
+    - task race
 
 .memory_sanitizer:
   extends: .go-cache
@@ -76,24 +76,7 @@ race_detector:
   rules:
     - *rule-build-go
   script:
-    - make msan
-
-.code_coverage:
-  extends: .go-cache
-  stage: test
-  rules:
-    - *rule-build-go
-  script:
-    - make coverage
-
-.code_coverage_report:
-  extends: .go-cache
-  stage: test
-  rules:
-    - *rule-build-go
-    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
-  script:
-    - make coverhtml
+    - task msan
 
 lint_code:
   extends: .go-cache
@@ -101,7 +84,7 @@ lint_code:
   rules:
     - *rule-build-go
   script:
-    - make lint
+    - task lint
 
 build:
   extends: .go-cache
@@ -109,7 +92,7 @@ build:
   rules:
     - *rule-build-go
   script:
-    - make
+    - task build
 
 build-docker:
   # per includes

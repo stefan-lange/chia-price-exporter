@@ -41,7 +41,7 @@ scrape_configs:
 
 ```shell
 # build and run
-make build
+task build
 ./bin/chia-price-exporter serve
 # test manually
 curl -v localhost:9952/metrics
@@ -51,7 +51,7 @@ curl -v localhost:9952/metrics
 
 ```shell
 # build and run
-docker run --rm -p "9952:9952" -it $(docker build -q .) serve
+docker run --rm -p "9952:9952" -it $(docker buildx build -q .) serve
 # test manually
 curl -v localhost:9952/metrics
 ```
@@ -59,7 +59,7 @@ curl -v localhost:9952/metrics
 play with executable
 
 ```shell
-docker run --rm -it $(docker build -q .)
+docker run --rm -it $(docker buildx build -q .)
 ```
 
 ## Maintenance
