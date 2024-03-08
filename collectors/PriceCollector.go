@@ -10,7 +10,7 @@ const (
 	MetricSubsystem = "price"
 )
 
-//PriceCollector internal data structure of the price collector
+// PriceCollector internal data structure of the price collector
 type PriceCollector struct {
 	prometheus.Collector
 
@@ -24,7 +24,7 @@ type PriceCollector struct {
 	usdCents   prometheus.Gauge
 }
 
-//InitMetrics registers any metrics (gauges, counters, etc). Use this in the 'Describe()' of the current collector implementation
+// InitMetrics registers any metrics (gauges, counters, etc). Use this in the 'Describe()' of the current collector implementation
 func (c *PriceCollector) InitMetrics(ch chan<- *prometheus.Desc) {
 
 	c.dataOk = NewGauge("data_ok", "Was the last API scraping ok", ch)
@@ -35,7 +35,7 @@ func (c *PriceCollector) InitMetrics(ch chan<- *prometheus.Desc) {
 	c.usdCents = NewGauge("usd_cent", "Current Chia price in USD cent", ch)
 }
 
-//NewGauge helper to create and register a prometheus.Gauge
+// NewGauge helper to create and register a prometheus.Gauge
 func NewGauge(name string, help string, ch chan<- *prometheus.Desc) prometheus.Gauge {
 	gauge := prometheus.NewGauge(prometheus.GaugeOpts{
 		Namespace: MetricNamespace,
@@ -49,7 +49,7 @@ func NewGauge(name string, help string, ch chan<- *prometheus.Desc) prometheus.G
 	return gauge
 }
 
-//UpdateGauge helper to update a prometheus.Gauge
+// UpdateGauge helper to update a prometheus.Gauge
 func UpdateGauge(gauge prometheus.Gauge, value float64, ch chan<- prometheus.Metric) {
 	gauge.Set(value)
 	ch <- gauge
