@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.4] - 2024-03-08
+
+### Updated
+
+- prometheus/client_golang to v1.19.0
+- indirect go dependencies to latest and greatest
+
+### Changed
+
+- project now uses `task` (<https://taskfile.dev>) instead of `make`
+
 ## [0.1.3] - 2024-01-05
 
 ### Updated

@@ -17,7 +17,7 @@ var (
 	client       = &http.Client{}
 )
 
-//CoinGeckoPriceResponse for the coingecko.com price api v3
+// CoinGeckoPriceResponse for the coingecko.com price api v3
 type CoinGeckoPriceResponse struct {
 	Chia struct {
 		BTC float64 `json:"btc"`
