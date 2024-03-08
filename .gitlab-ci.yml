@@ -1,201 +1,201 @@
 include:
-    - project: 'buildsrv/ci'
-      file:
-          - '/templates/build/multiarch-image/v1.gitlab-ci.yml'
-          - '/templates/build/gitlab-release/v1.gitlab-ci.yml'
-          - '/templates/build/registry-image-copy/v1.gitlab-ci.yml'
-          - '/templates/test/multiarch-image/v1.gitlab-ci.yml'
+  - project: 'buildsrv/ci'
+    file:
+      - '/templates/build/multiarch-image/v1.gitlab-ci.yml'
+      - '/templates/build/gitlab-release/v1.gitlab-ci.yml'
+      - '/templates/build/registry-image-copy/v1.gitlab-ci.yml'
+      - '/templates/test/multiarch-image/v1.gitlab-ci.yml'
 
 .go-cache:
-    variables:
-        GOPATH: $CI_PROJECT_DIR/.go
-    before_script:
-        - mkdir -p .go
-    cache:
-        key: $CI_PROJECT_ID
-        # read-only cache as default
-        policy: pull
-        paths:
-            - .go/pkg/mod/
+  variables:
+    GOPATH: $CI_PROJECT_DIR/.go
+  before_script:
+    - mkdir -p .go
+  cache:
+    key: $CI_PROJECT_ID
+    # read-only cache as default
+    policy: pull
+    paths:
+      - .go/pkg/mod/
 
 .rule-build-docker: &rule-build-docker
-    # don't run on tags
-    if: '$CI_COMMIT_TAG == null'
+  # don't run on tags
+  if: '$CI_COMMIT_TAG == null'
 
 .rule-build-go: &rule-build-go
-    # don't run on tags
-    if: '$CI_COMMIT_TAG == null'
+  # don't run on tags
+  if: '$CI_COMMIT_TAG == null'
 
 .rule-run-on-tags: &rule-run-on-tags
-    if: $CI_COMMIT_TAG
-    when: on_success
+  if: $CI_COMMIT_TAG
+  when: on_success
 
 default:
-    image: golang:1.22
+  image: golang:1.22
 
 variables:
-    APP_VERSION_INTERNAL: "dev.$CI_PIPELINE_IID"
+  APP_VERSION_INTERNAL: "dev.$CI_PIPELINE_IID"
 
 stages:
-    - prepare
-    - test
-    - build
-    - integration
-    - release
+  - prepare
+  - test
+  - build
+  - integration
+  - release
 
 cache_deps:
-    extends: .go-cache
-    stage: prepare
-    rules:
-        - *rule-build-go
-    script:
-        - make dep
-    cache:
-        # make cache writeable for this job
-        policy: pull-push
+  extends: .go-cache
+  stage: prepare
+  rules:
+    - *rule-build-go
+  script:
+    - make dep
+  cache:
+    # make cache writeable for this job
+    policy: pull-push
 
 unit_tests:
-    extends: .go-cache
-    stage: test
-    rules:
-        - *rule-build-go
-    script:
-        - make test
+  extends: .go-cache
+  stage: test
+  rules:
+    - *rule-build-go
+  script:
+    - make test
 
 race_detector:
-    extends: .go-cache
-    stage: test
-    rules:
-        - *rule-build-go
-    script:
-        - make race
+  extends: .go-cache
+  stage: test
+  rules:
+    - *rule-build-go
+  script:
+    - make race
 
 .memory_sanitizer:
-    extends: .go-cache
-    stage: test
-    rules:
-        - *rule-build-go
-    script:
-        - make msan
+  extends: .go-cache
+  stage: test
+  rules:
+    - *rule-build-go
+  script:
+    - make msan
 
 .code_coverage:
-    extends: .go-cache
-    stage: test
-    rules:
-        - *rule-build-go
-    script:
-        - make coverage
+  extends: .go-cache
+  stage: test
+  rules:
+    - *rule-build-go
+  script:
+    - make coverage
 
 .code_coverage_report:
-    extends: .go-cache
-    stage: test
-    rules:
-        - *rule-build-go
-        - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
-    script:
-        - make coverhtml
+  extends: .go-cache
+  stage: test
+  rules:
+    - *rule-build-go
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+  script:
+    - make coverhtml
 
 lint_code:
-    extends: .go-cache
-    stage: test
-    rules:
-        - *rule-build-go
-    script:
-        - make lint
+  extends: .go-cache
+  stage: test
+  rules:
+    - *rule-build-go
+  script:
+    - make lint
 
 build:
-    extends: .go-cache
-    stage: build
-    rules:
-        - *rule-build-go
-    script:
-        - make
+  extends: .go-cache
+  stage: build
+  rules:
+    - *rule-build-go
+  script:
+    - make
 
 build-docker:
-    # per includes
-    extends: .build:multiarch-image
-    stage: build
-    rules:
-        - *rule-build-docker
-        - *rule-run-on-tags
-    variables:
-        TAGS: "$APP_VERSION_INTERNAL"
-    retry: 2
+  # per includes
+  extends: .build:multiarch-image
+  stage: build
+  rules:
+    - *rule-build-docker
+    - *rule-run-on-tags
+  variables:
+    TAGS: "$APP_VERSION_INTERNAL"
+  retry: 2
 
 # integration below --------------------
 
 test-image:
-    # per includes
-    extends: .test:multiarch-image
-    stage: integration
-    rules:
-        - *rule-build-docker
-    needs:
-        - build-docker
-    variables:
-        TEST_IMAGE_TAG: $APP_VERSION_INTERNAL
-    script:
-        - |
-            docker run --name "$TEST_CONTAINER_NAME" --rm --platform "$PLATFORM" "$TEST_IMAGE" serve &
-            sleep 3
-        - |
-            # call metrics endpoint
-            docker run --link "$TEST_CONTAINER_NAME:testme" --rm curlimages/curl -v --show-error --connect-timeout 5 --max-time 10 --retry 5 --retry-delay 1 "http://testme:9952/metrics" >./response.txt
-        - cat ./response.txt
-        - |
-            # check if "chia_price_eur_cent 1234.0" is in response
-            RESPONSE_PATTERN="^chia_price_eur_cent[[:blank:]][[:digit:]]+\.?[[:digit:]]+$"
-            if grep -q -E $RESPONSE_PATTERN ./response.txt; then
-                parsedResult=$(grep -E $RESPONSE_PATTERN ./response.txt)
-            else
-                echo "Could not find 'chia_price_eur_cent' in response"
-                docker logs "$TEST_CONTAINER_NAME"
-                exit 1
-            fi
-            
-            # check if the price has a valid value (> 0)
-            actualPriceEurCent=$(echo $parsedResult | cut -d" " -f2)
-            echo "actual chia price [eur cent] is '$actualPriceEurCent'"
-            ([ ! -z "$actualPriceEurCent" ] && [ "$(echo "$actualPriceEurCent > 0"|bc)" -eq 1 ] && echo "Test successful!") || (echo "Test failed: expected chia price [eur cent] '$actualPriceEurCent' is not > 0" && exit 1)
-    parallel:
-        matrix:
-            -   PLATFORM:
-                    - linux/amd64
-                    - linux/arm64
+  # per includes
+  extends: .test:multiarch-image
+  stage: integration
+  rules:
+    - *rule-build-docker
+  needs:
+    - build-docker
+  variables:
+    TEST_IMAGE_TAG: $APP_VERSION_INTERNAL
+  script:
+    - |
+      docker run --name "$TEST_CONTAINER_NAME" --rm --platform "$PLATFORM" "$TEST_IMAGE" serve &
+      sleep 3
+    - |
+      # call metrics endpoint
+      docker run --link "$TEST_CONTAINER_NAME:testme" --rm curlimages/curl -v --show-error --connect-timeout 5 --max-time 10 --retry 5 --retry-delay 1 "http://testme:9952/metrics" >./response.txt
+    - cat ./response.txt
+    - |
+      # check if "chia_price_eur_cent 1234.0" is in response
+      RESPONSE_PATTERN="^chia_price_eur_cent[[:blank:]][[:digit:]]+\.?[[:digit:]]+$"
+      if grep -q -E $RESPONSE_PATTERN ./response.txt; then
+          parsedResult=$(grep -E $RESPONSE_PATTERN ./response.txt)
+      else
+          echo "Could not find 'chia_price_eur_cent' in response"
+          docker logs "$TEST_CONTAINER_NAME"
+          exit 1
+      fi
+      
+      # check if the price has a valid value (> 0)
+      actualPriceEurCent=$(echo $parsedResult | cut -d" " -f2)
+      echo "actual chia price [eur cent] is '$actualPriceEurCent'"
+      ([ ! -z "$actualPriceEurCent" ] && [ "$(echo "$actualPriceEurCent > 0"|bc)" -eq 1 ] && echo "Test successful!") || (echo "Test failed: expected chia price [eur cent] '$actualPriceEurCent' is not > 0" && exit 1)
+  parallel:
+    matrix:
+      - PLATFORM:
+          - linux/amd64
+          - linux/arm64
 
 # release below ------------------------
 
 gitlab-release:
-    # per includes
-    extends: .build:gitlab-release
-    stage: release
-    rules:
-        - *rule-run-on-tags
+  # per includes
+  extends: .build:gitlab-release
+  stage: release
+  rules:
+    - *rule-run-on-tags
 
 tag-release:
-    # per includes
-    extends: .build:registry-image-copy
-    stage: release
-    rules:
-        - *rule-run-on-tags
-    needs:
-        - job: build-docker
-    variables:
-        IN_DOCKER_IMAGE_TAG: "$APP_VERSION_INTERNAL"
-        OUT_DOCKER_IMAGE_TAGS: "$CI_COMMIT_TAG latest"
+  # per includes
+  extends: .build:registry-image-copy
+  stage: release
+  rules:
+    - *rule-run-on-tags
+  needs:
+    - job: build-docker
+  variables:
+    IN_DOCKER_IMAGE_TAG: "$APP_VERSION_INTERNAL"
+    OUT_DOCKER_IMAGE_TAGS: "$CI_COMMIT_TAG latest"
 
 publish-docker-hub:
-    # per includes
-    stage: release
-    extends: .build:registry-image-copy
-    rules:
-        - *rule-run-on-tags
-    needs:
-        - tag-release
-    variables:
-        OUT_DOCKER_REGISTRY: 'docker.io'
-        OUT_DOCKER_REGISTRY_IMAGE_PATH: 'cryptastic/chia-price-exporter'
-        OUT_DOCKER_REGISTRY_LOGIN_TOKEN: $DOCKER_HUB_TOKEN
-        OUT_DOCKER_REGISTRY_LOGIN_USER: $DOCKER_HUB_USER
-        IN_DOCKER_IMAGE_TAG: "$CI_COMMIT_TAG"
-        OUT_DOCKER_IMAGE_TAGS: "$CI_COMMIT_TAG latest"
+  # per includes
+  stage: release
+  extends: .build:registry-image-copy
+  rules:
+    - *rule-run-on-tags
+  needs:
+    - tag-release
+  variables:
+    OUT_DOCKER_REGISTRY: 'docker.io'
+    OUT_DOCKER_REGISTRY_IMAGE_PATH: 'cryptastic/chia-price-exporter'
+    OUT_DOCKER_REGISTRY_LOGIN_TOKEN: $DOCKER_HUB_TOKEN
+    OUT_DOCKER_REGISTRY_LOGIN_USER: $DOCKER_HUB_USER
+    IN_DOCKER_IMAGE_TAG: "$CI_COMMIT_TAG"
+    OUT_DOCKER_IMAGE_TAGS: "$CI_COMMIT_TAG latest"
