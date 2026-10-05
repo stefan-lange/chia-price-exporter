@@ -3,9 +3,24 @@
 All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
-and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+and this project adheres to [Calendar Versioning](https://calver.org/).
 
 ## [Unreleased]
+
+## [2026.10.0] - 2026-10-05
+
+### Updated
+
+- go to 1.25
+- prometheus/client_golang to v1.24.1
+- sirupsen/logrus to v1.10.2
+- spf13/cobra to v1.10.2
+- spf13/viper to v1.21.0
+- indirect go dependencies to latest and greatest
+
+### Changed
+
+- versioning scheme from SemVer to CalVer
 
 ## [0.1.4] - 2024-03-08
 
