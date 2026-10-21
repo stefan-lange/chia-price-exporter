@@ -7,6 +7,18 @@ and this project adheres to [Calendar Versioning](https://calver.org/).
 
 ## [Unreleased]
 
+## [2026.10.1] - 2026-10-21
+
+### Added
+
+- new endpoint `/healthz/liveness`
+
+### Updated
+
+- go to 1.27
+- prometheus/client_golang to v1.25.0
+- indirect go dependencies to the latest and greatest
+
 ## [2026.10.0] - 2026-10-05
 
 ### Updated
@@ -16,7 +28,7 @@ and this project adheres to [Calendar Versioning](https://calver.org/).
 - sirupsen/logrus to v1.10.2
 - spf13/cobra to v1.10.2
 - spf13/viper to v1.21.0
-- indirect go dependencies to latest and greatest
+- indirect go dependencies to the latest and greatest
 
 ### Changed
 
@@ -27,7 +39,7 @@ and this project adheres to [Calendar Versioning](https://calver.org/).
 ### Updated
 
 - prometheus/client_golang to v1.19.0
-- indirect go dependencies to latest and greatest
+- indirect go dependencies to the latest and greatest
 
 ### Changed
 
@@ -40,7 +52,7 @@ and this project adheres to [Calendar Versioning](https://calver.org/).
 - prometheus/client_golang to v1.18.0
 - spf13/cobra v1.8.0
 - spf13/viper to v1.18.2
-- indirect go dependencies to latest and greatest
+- indirect go dependencies to the latest and greatest
 
 ## [0.1.2] - 2023-10-16
 
@@ -48,7 +60,7 @@ and this project adheres to [Calendar Versioning](https://calver.org/).
 
 - prometheus/client_golang to v1.17.0
 - spf13/viper to v1.17.0
-- indirect go dependencies to latest and greatest
+- indirect go dependencies to the latest and greatest
 
 ## [0.1.1] - 2023-07-18
 
@@ -65,7 +77,7 @@ and this project adheres to [Calendar Versioning](https://calver.org/).
 ### Updated
 
 - go from 1.18 to 1.20
-- go dependencies to latest and greatest
+- go dependencies to the latest and greatest
 
 ### Changed
 
@@ -80,7 +92,7 @@ and this project adheres to [Calendar Versioning](https://calver.org/).
 ### Updated
 
 - go from 1.18 to 1.20
-- go dependencies to latest and greatest
+- go dependencies to the latest and greatest
 
 ## [0.0.3] - 2022-06-25
 
