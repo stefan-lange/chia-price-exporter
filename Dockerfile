@@ -8,7 +8,7 @@ RUN curl --retry 6 -Ls https://github.com/go-task/task/releases/download/v${TASK
 # -------------------------------------
 # builder
 # -------------------------------------
-FROM golang:1.25.4-alpine3.22 AS builder
+FROM golang:1.27.3-alpine3.24 AS builder
 RUN apk add --update --no-cache \
         bash \
         build-base
