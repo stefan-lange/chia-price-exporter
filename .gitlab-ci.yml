@@ -31,7 +31,7 @@ include:
   when: on_success
 
 default:
-  image: registry.gitlab.com/buildsrv/images:build-base-golang-1.25
+  image: registry.gitlab.com/buildsrv/images:build-base-golang-1.27
 
 variables:
   APP_VERSION_INTERNAL: "dev.$CI_PIPELINE_IID"
