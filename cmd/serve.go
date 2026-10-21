@@ -46,6 +46,15 @@ func init() {
 func StartServer(metricsPort uint16, prometheusRegistry *prometheus.Registry) error {
 	log.Printf("Starting metrics server on port %d", metricsPort)
 
-	http.Handle("/metrics", promhttp.HandlerFor(prometheusRegistry, promhttp.HandlerOpts{}))
-	return http.ListenAndServe(fmt.Sprintf(":%d", metricsPort), nil)
+	mux := http.NewServeMux()
+
+	mux.Handle("/metrics", promhttp.HandlerFor(prometheusRegistry, promhttp.HandlerOpts{}))
+
+	mux.HandleFunc("/healthz/liveness", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{"status":"UP"}`))
+	})
+
+	return http.ListenAndServe(fmt.Sprintf(":%d", metricsPort), mux)
 }
